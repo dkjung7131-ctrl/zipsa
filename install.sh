@@ -54,6 +54,8 @@ mkdir -p "$HOME/Library/Services"
 WF=$(/usr/bin/python3 -I quick_action.py "$HOME/Library/Services" "$BIN_DIR/zipsa")
 /System/Library/CoreServices/pbs -update >/dev/null 2>&1 || true   # 서비스 메뉴 목록 갱신
 echo "✓ 빠른 동작 설치: $WF"
+# macOS는 이렇게 설치한 빠른 동작을 꺼 둔다 → 꺼져 있으면 켜는 방법 안내 (대화상자는 처음 한 번만)
+/usr/bin/python3 -I quick_action.py --prompt-enable || true
 
 # 'zipsa --update'가 부른 경우: 안내 문구와 Finder 열기는 생략
 [[ -n "${ZIPSA_UPDATING:-}" ]] && exit 0
