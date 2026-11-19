@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Finder 확장은 샌드박스가 필수. 파일 접근 권한은 필요 없다 (경로만 링크로 넘김) -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+</dict>
+</plist>

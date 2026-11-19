@@ -19,15 +19,16 @@ bash install.sh
 
 git이 없으면 이 페이지의 **Code → Download ZIP**으로 받아서 푼 뒤 `bash install.sh`를 실행하세요.
 
-- 터미널 명령어 `~/.local/bin/zipsa`, 앱 `~/Applications/집사.app`, Finder 우클릭 메뉴(빠른 동작)가 설치됩니다.
-- macOS 기본 `python3`(Xcode Command Line Tools)를 씁니다. 없으면 설치 창이 뜹니다.
+- 터미널 명령어 `~/.local/bin/zipsa`, 앱 `~/Applications/집사.app`, Finder 우클릭 메뉴가 설치됩니다.
+- macOS 기본 `python3`와 `swiftc`(Xcode Command Line Tools)를 씁니다. 없으면 설치 창이 뜹니다.
 
 ## 사용법
 
 **앱**: 파일이나 폴더를 `집사.app` 아이콘 위로 끌어다 놓으면 같은 폴더에 `이름.zip`이 생깁니다. Dock에 올려두면 편합니다.
 
-**Finder 우클릭**: 항목을 선택하고 우클릭 → **빠른 동작 → 집사에게 압축 맡기기**. 완료되면 알림이 뜹니다.
-macOS가 처음에는 이 메뉴를 꺼 두기 때문에 **한 번만 켜 주세요**: Finder에서 아무 파일이나 우클릭 → **빠른 동작 → 사용자화…** → `집사에게 압축 맡기기` 켜기.
+**Finder 우클릭**: 항목을 선택하고 우클릭 → **집사에게 압축 맡기기**. 완료되면 알림이 뜹니다.
+macOS가 처음에는 이 메뉴를 꺼 두기 때문에 **한 번만 켜 주세요**: 시스템 설정 → 일반 → 로그인 항목 및 확장 프로그램 → (카테고리별) **파일 제공자** ⓘ → `집사` 켜기.
+(집사.app 안에 들어 있는 Finder 확장입니다. 개발자 계정 없이 설치할 때 직접 빌드합니다.)
 
 **터미널**:
 

@@ -15,6 +15,17 @@ on open theItems
 	end try
 end open
 
+-- Finder right-click menu (the Finder extension) sends zipsa-finder://compress?p=...&t=...
+-- zipsa.py checks the token and zips the paths.
+on open location theURL
+	set py to POSIX path of (path to resource "zipsa.py")
+	try
+		do shell script "/usr/bin/python3 " & quoted form of py & " --notify --open-url " & quoted form of theURL
+	on error errMsg number errNum
+		if errNum is not 1 then display alert "Zipsa" message errMsg as critical
+	end try
+end open location
+
 -- Double-click: about + version + update (all dialogs are shown by zipsa.py)
 on run
 	set py to POSIX path of (path to resource "zipsa.py")

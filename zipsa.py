@@ -10,6 +10,7 @@ zipsa (집사) — 윈도우에서 깨지지 않는 ZIP을 만드는 macOS용 �
 표준 라이브러리만 사용 (macOS 기본 python3 3.9 이상에서 동작)
 """
 import argparse
+import hmac
 import json
 import os
 import re
@@ -21,11 +22,12 @@ import tarfile
 import tempfile
 import time
 import unicodedata
+import urllib.parse
 import urllib.request
 import zipfile
 from collections import Counter
 
-VERSION = "1.2.2"
+VERSION = "1.3.0"
 
 # 새 버전은 GitHub 릴리스(태그 vX.Y.Z)로 배포한다. main에 push만 한 변경은 사용자에게 가지 않는다.
 REPO_URL = "https://github.com/dkjung7131-ctrl/zipsa"
@@ -377,6 +379,31 @@ def app_about():
     return 0
 
 
+# ── Finder 우클릭 메뉴 ──────────────────────────────────────────────────────
+# 집사.app 안의 Finder 확장이 zipsa-finder://compress?p=<경로>&p=...&t=<확인값> 링크를 연다.
+# 확인값은 설치할 때 확장 안에 넣어 둔 것이라, 다른 앱이나 웹페이지가 보낸 링크는 걸러진다.
+FINDER_TOKEN = os.path.join("..", "PlugIns", "ZipsaFinder.appex", "Contents", "Resources", "token")
+
+
+def paths_from_finder_link(url):
+    """링크에서 경로 목록을 꺼낸다. 형식이 틀리거나 확인값이 맞지 않으면 None"""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        query = urllib.parse.parse_qs(parts.query)
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), FINDER_TOKEN),
+                  encoding="utf-8") as f:
+            expected = f.read().strip()
+    except (OSError, ValueError):
+        return None
+    token = query.get("t", [""])[-1]
+    paths = query.get("p", [])
+    if (parts.scheme, parts.netloc) != ("zipsa-finder", "compress") or not expected \
+            or not hmac.compare_digest(token.encode("utf-8"), expected.encode("utf-8")) \
+            or not paths or not all(os.path.isabs(p) for p in paths):
+        return None
+    return paths
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -396,6 +423,7 @@ def main(argv=None):
     ap.add_argument("--notify", action="store_true", help="결과를 macOS 알림/경고창으로 표시")
     ap.add_argument("--update", action="store_true", help="최신 버전으로 업데이트")
     ap.add_argument("--app", action="store_true", help=argparse.SUPPRESS)   # 집사.app 더블클릭
+    ap.add_argument("--open-url", metavar="URL", help=argparse.SUPPRESS)    # Finder 우클릭 메뉴
     ap.add_argument("--version", action="version", version="zipsa " + VERSION)
     args = ap.parse_args(argv)
 
@@ -408,6 +436,12 @@ def main(argv=None):
             print("zipsa: " + str(e), file=sys.stderr)
             return 1
         return 0
+    if args.open_url is not None:
+        paths = paths_from_finder_link(args.open_url)
+        if paths is None:
+            print("zipsa: 집사 Finder 메뉴가 보낸 링크가 아니라서 무시했습니다", file=sys.stderr)
+            return 0
+        args.paths = paths
     if not args.paths:
         ap.print_help()
         return 2
