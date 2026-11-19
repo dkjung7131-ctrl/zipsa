@@ -2,6 +2,7 @@
 # 집사(Zipsa) 설치 스크립트 (macOS)
 #   - 터미널 명령어: ~/.local/bin/zipsa
 #   - 드래그&드롭 앱: ~/Applications/집사.app
+#   - Finder 빠른 동작: ~/Library/Services/집사에게 압축 맡기기.workflow
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -48,6 +49,12 @@ codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 touch "$APP"   # Finder 아이콘 캐시 갱신
 echo "✓ 앱 설치: $APP"
 
+# 3) Finder 우클릭 → 빠른 동작 → 집사에게 압축 맡기기
+mkdir -p "$HOME/Library/Services"
+WF=$(/usr/bin/python3 -I quick_action.py "$HOME/Library/Services" "$BIN_DIR/zipsa")
+/System/Library/CoreServices/pbs -update >/dev/null 2>&1 || true   # 서비스 메뉴 목록 갱신
+echo "✓ 빠른 동작 설치: $WF"
+
 # 'zipsa --update'가 부른 경우: 안내 문구와 Finder 열기는 생략
 [[ -n "${ZIPSA_UPDATING:-}" ]] && exit 0
 
@@ -59,5 +66,5 @@ case ":$PATH:" in
 esac
 
 echo
-echo "Finder 우클릭 메뉴(빠른 동작)에 넣는 방법은 README.md를 참고하세요."
+echo "Finder에서 우클릭 → 빠른 동작 → '집사에게 압축 맡기기'로도 쓸 수 있습니다."
 open -R "$APP" 2>/dev/null || true

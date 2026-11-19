@@ -25,7 +25,7 @@ import urllib.request
 import zipfile
 from collections import Counter
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 # 새 버전은 GitHub 릴리스(태그 vX.Y.Z)로 배포한다. main에 push만 한 변경은 사용자에게 가지 않는다.
 REPO_URL = "https://github.com/dkjung7131-ctrl/zipsa"
