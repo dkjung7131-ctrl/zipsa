@@ -15,8 +15,12 @@ on open theItems
 	end try
 end open
 
+-- Double-click: about + version + update (all dialogs are shown by zipsa.py)
 on run
 	set py to POSIX path of (path to resource "zipsa.py")
-	set msg to do shell script "/usr/bin/python3 " & quoted form of py & " --about"
-	display dialog msg buttons {"OK"} default button 1 with title "Zipsa"
+	try
+		do shell script "/usr/bin/python3 " & quoted form of py & " --app"
+	on error errMsg number errNum
+		if errNum is not 1 then display alert "Zipsa" message errMsg as critical
+	end try
 end run

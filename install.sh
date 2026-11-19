@@ -48,6 +48,9 @@ codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 touch "$APP"   # Finder 아이콘 캐시 갱신
 echo "✓ 앱 설치: $APP"
 
+# 'zipsa --update'가 부른 경우: 안내 문구와 Finder 열기는 생략
+[[ -n "${ZIPSA_UPDATING:-}" ]] && exit 0
+
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) echo

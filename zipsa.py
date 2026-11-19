@@ -10,15 +10,27 @@ zipsa (집사) — 윈도우에서 깨지지 않는 ZIP을 만드는 macOS용 �
 표준 라이브러리만 사용 (macOS 기본 python3 3.9 이상에서 동작)
 """
 import argparse
+import json
 import os
+import re
+import shutil
 import stat
 import subprocess
 import sys
+import tarfile
+import tempfile
+import time
 import unicodedata
+import urllib.request
 import zipfile
 from collections import Counter
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
+
+# 새 버전은 GitHub 릴리스(태그 vX.Y.Z)로 배포한다. main에 push만 한 변경은 사용자에게 가지 않는다.
+REPO_URL = "https://github.com/dkjung7131-ctrl/zipsa"
+CHECK_INTERVAL = 24 * 60 * 60   # 새 버전 자동 확인은 하루 한 번
+CACHE_FILE = "~/Library/Caches/zipsa/update.json"
 
 # 압축에서 빼는 macOS 전용 파일/폴더 (이름이 '._'로 시작하는 AppleDouble 파일도 제외)
 JUNK_NAMES = {
@@ -229,6 +241,142 @@ def mac_notify(title, message, error=False):
         pass
 
 
+def mac_dialog(message, buttons):
+    """버튼이 있는 대화상자. 누른 버튼 이름을 돌려준다 (실패하면 None)"""
+    icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "applet.icns")
+    show = "display dialog (item 1 of argv) with title (item 2 of argv) buttons btns default button (count of btns)"
+    script = ["on run argv", "activate", "set btns to items 4 thru -1 of argv",
+              'if item 3 of argv is "" then', "set r to " + show,
+              "else", "set r to " + show + " with icon (POSIX file (item 3 of argv))", "end if",
+              "return button returned of r", "end run"]
+    cmd = ["/usr/bin/osascript"]
+    for line in script:
+        cmd += ["-e", line]
+    cmd += [message, "집사", icon if os.path.isfile(icon) else ""] + list(buttons)
+    try:
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                           universal_newlines=True, timeout=600)
+    except Exception:
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+# ── 업데이트 ────────────────────────────────────────────────────────────────
+
+def parse_version(v):
+    try:
+        return tuple(int(p) for p in str(v).lstrip("vV").split("."))
+    except ValueError:
+        return None
+
+
+def is_newer(latest):
+    a, b = parse_version(latest), parse_version(VERSION)
+    return a is not None and b is not None and a > b
+
+
+def _open_url(url, timeout):
+    req = urllib.request.Request(url, headers={"User-Agent": "zipsa/" + VERSION})
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+def latest_version(timeout):
+    """GitHub 최신 릴리스 버전('1.2.0'). 릴리스가 없으면 None, 네트워크 오류는 예외"""
+    with _open_url(REPO_URL + "/releases/latest", timeout) as r:
+        final = r.geturl()   # 릴리스가 있으면 .../releases/tag/v1.2.0 으로 리다이렉트된다
+    m = re.search(r"/releases/tag/v(\d+(?:\.\d+)*)$", final)
+    return m.group(1) if m else None
+
+
+def update_hint():
+    """하루 한 번 새 버전을 확인해서, 있으면 그 버전 문자열을 돌려준다 (실패는 조용히 무시)"""
+    if os.environ.get("ZIPSA_NO_UPDATE_CHECK"):
+        return None
+    path = os.path.expanduser(CACHE_FILE)
+    try:
+        with open(path, encoding="utf-8") as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = None
+    if not isinstance(cache, dict):
+        cache = {}
+    checked = cache.get("checked")
+    if not isinstance(checked, (int, float)) or not 0 <= time.time() - checked < CHECK_INTERVAL:
+        try:
+            cache["latest"] = latest_version(timeout=3)
+        except Exception:
+            pass   # 오프라인 등: 이전 결과를 쓰고 내일 다시 확인
+        cache["checked"] = time.time()
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(cache, f)
+        except OSError:
+            pass
+    latest = cache.get("latest")
+    return latest if is_newer(latest) else None
+
+
+def install_update():
+    """최신 릴리스를 내려받아 그 안의 install.sh로 다시 설치한다. 결과 메시지를 돌려준다"""
+    try:
+        latest = latest_version(timeout=10)
+    except Exception as e:
+        raise ZipsaError("새 버전을 확인하지 못했습니다. 인터넷 연결을 확인하세요. (%s)" % e)
+    if latest is None:
+        raise ZipsaError("배포된 버전이 없습니다")
+    if not is_newer(latest):
+        return "이미 최신 버전입니다 (%s)" % VERSION
+
+    tmp = tempfile.mkdtemp(prefix="zipsa-update-")
+    try:
+        archive = os.path.join(tmp, "src.tar.gz")
+        with _open_url("%s/archive/refs/tags/v%s.tar.gz" % (REPO_URL, latest), 60) as r, \
+                open(archive, "wb") as f:
+            shutil.copyfileobj(r, f)
+        src = os.path.join(tmp, "src")
+        with tarfile.open(archive) as tf:
+            for m in tf.getmembers():
+                if m.name.startswith("/") or ".." in m.name.split("/") or not (m.isfile() or m.isdir()):
+                    raise ZipsaError("내려받은 파일이 이상해서 설치하지 않았습니다: " + m.name)
+            tf.extractall(src)
+        tops = os.listdir(src)
+        installer = os.path.join(src, tops[0], "install.sh") if len(tops) == 1 else ""
+        if not os.path.isfile(installer):
+            raise ZipsaError("내려받은 파일에 install.sh가 없습니다")
+        r = subprocess.run(["/bin/bash", installer], env=dict(os.environ, ZIPSA_UPDATING="1"),
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        if r.returncode != 0:
+            raise ZipsaError("설치하지 못했습니다:\n" + r.stdout.strip()[-800:])
+    except (OSError, tarfile.TarError) as e:
+        raise ZipsaError("업데이트하지 못했습니다: %s" % e)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "%s → %s 업데이트를 마쳤어요" % (VERSION, latest)
+
+
+def app_about():
+    """집사.app을 더블클릭했을 때: 소개·버전을 보여 주고, 새 버전이 있으면 업데이트를 권한다"""
+    try:
+        latest = latest_version(timeout=5)
+    except Exception:
+        latest = None
+    text = ABOUT + "\n\n버전 " + VERSION
+    if not is_newer(latest):
+        mac_dialog(text + (" (최신)" if latest else ""), ["확인"])
+        return 0
+    text += "\n\n새 버전(%s)이 나왔어요. 지금 업데이트할까요?" % latest
+    if mac_dialog(text, ["나중에", "업데이트"]) != "업데이트":
+        return 0
+    try:
+        msg = install_update()
+    except ZipsaError as e:
+        mac_notify("집사가 업데이트하지 못했어요", str(e), error=True)
+        return 1
+    mac_dialog("🐾 " + msg, ["확인"])
+    return 0
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -246,12 +394,19 @@ def main(argv=None):
                     help="압축 레벨 (기본 6, 0 = 무압축)")
     ap.add_argument("-q", "--quiet", action="store_true", help="결과 요약을 출력하지 않음")
     ap.add_argument("--notify", action="store_true", help="결과를 macOS 알림/경고창으로 표시")
-    ap.add_argument("--about", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--update", action="store_true", help="최신 버전으로 업데이트")
+    ap.add_argument("--app", action="store_true", help=argparse.SUPPRESS)   # 집사.app 더블클릭
     ap.add_argument("--version", action="version", version="zipsa " + VERSION)
     args = ap.parse_args(argv)
 
-    if args.about:
-        print(ABOUT)
+    if args.app:
+        return app_about()
+    if args.update:
+        try:
+            print(install_update())
+        except ZipsaError as e:
+            print("zipsa: " + str(e), file=sys.stderr)
+            return 1
         return 0
     if not args.paths:
         ap.print_help()
@@ -274,8 +429,14 @@ def main(argv=None):
             print(text)
         except BrokenPipeError:
             pass
+    newer = update_hint() if (args.notify or not args.quiet) else None
+    if newer and not args.quiet:
+        print("zipsa: 새 버전(%s)이 나왔어요. 'zipsa --update'로 업데이트하세요." % newer, file=sys.stderr)
     if args.notify:
-        mac_notify("집사 🐾", "\n".join(l.strip() for l in text.splitlines()))
+        lines = [l.strip() for l in text.splitlines()]
+        if newer:
+            lines.append("새 버전(%s) — 집사.app을 열어 업데이트하세요" % newer)
+        mac_notify("집사 🐾", "\n".join(lines))
     return 0
 
 
