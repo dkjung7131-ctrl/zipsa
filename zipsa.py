@@ -27,7 +27,7 @@ import urllib.request
 import zipfile
 from collections import Counter
 
-VERSION = "1.3.1"
+VERSION = "1.3.2"
 
 # 새 버전은 GitHub 릴리스(태그 vX.Y.Z)로 배포한다. main에 push만 한 변경은 사용자에게 가지 않는다.
 REPO_URL = "https://github.com/dkjung7131-ctrl/zipsa"
@@ -431,6 +431,9 @@ def main(argv=None):
     ap.add_argument("--notify", action="store_true", help="결과를 macOS 알림/경고창으로 표시")
     ap.add_argument("--update", action="store_true", help="최신 버전으로 업데이트")
     ap.add_argument("--app", action="store_true", help=argparse.SUPPRESS)   # 집사.app 더블클릭
+    # 집사.app이 알림을 직접 띄울 때: 결과를 '제목\n내용'으로 출력만 한다 (성공=stdout, 실패=stderr+종료코드 1).
+    # osascript로 띄우면 알림 아이콘이 '스크립트 편집기'로 나오기 때문
+    ap.add_argument("--app-notify", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--open-url", metavar="URL", help=argparse.SUPPRESS)    # Finder 우클릭 메뉴
     ap.add_argument("--version", action="version", version="zipsa " + VERSION)
     args = ap.parse_args(argv)
@@ -453,6 +456,8 @@ def main(argv=None):
     if not args.paths:
         ap.print_help()
         return 2
+    if args.app_notify:
+        args.quiet = True   # stdout에는 알림 내용만
 
     try:
         output, plan = run(args)
@@ -460,6 +465,9 @@ def main(argv=None):
         return 130
     except Exception as e:
         msg = str(e) if isinstance(e, ZipsaError) else "%s: %s" % (type(e).__name__, e)
+        if args.app_notify:
+            print("집사가 압축하지 못했어요\n" + msg, file=sys.stderr)
+            return 1
         print("zipsa: " + msg, file=sys.stderr)
         if args.notify:
             mac_notify("집사가 압축하지 못했어요", msg, error=True)
@@ -471,14 +479,18 @@ def main(argv=None):
             print(text)
         except BrokenPipeError:
             pass
-    newer = update_hint() if (args.notify or not args.quiet) else None
+    notifying = args.notify or args.app_notify
+    newer = update_hint() if (notifying or not args.quiet) else None
     if newer and not args.quiet:
         print("zipsa: 새 버전(%s)이 나왔어요. 'zipsa --update'로 업데이트하세요." % newer, file=sys.stderr)
-    if args.notify:
+    if notifying:
         lines = [l.strip() for l in text.splitlines()]
         if newer:
             lines.append("새 버전(%s) — 집사.app을 열어 업데이트하세요" % newer)
-        mac_notify("집사 🐾", "\n".join(lines))
+        if args.app_notify:
+            print("집사 🐾\n" + "\n".join(lines))
+        else:
+            mac_notify("집사 🐾", "\n".join(lines))
     return 0
 
 
