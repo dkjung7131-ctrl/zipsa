@@ -11,16 +11,30 @@
 
 ## 설치
 
+두 방법 중 편한 쪽으로 하세요. 결과는 같습니다.
+
+### 방법 1. 한 줄 붙여넣기 (가장 간단)
+
+1. `⌘ + Space`로 Spotlight를 열고 **터미널**을 입력해 실행합니다.
+2. 아래 한 줄을 복사해 붙여넣고 `Enter`를 누릅니다.
+
 ```bash
-git clone https://github.com/dkjung7131-ctrl/zipsa.git
-cd zipsa
-bash install.sh
+git clone https://github.com/dkjung7131-ctrl/zipsa.git && bash zipsa/install.sh
 ```
 
-git이 없으면 이 페이지의 **Code → Download ZIP**으로 받아서 푼 뒤 `bash install.sh`를 실행하세요.
+### 방법 2. 더블클릭 (터미널 명령어 없이)
 
-- 터미널 명령어 `~/.local/bin/zipsa`, 앱 `~/Applications/집사.app`, Finder 우클릭 메뉴가 설치됩니다.
-- macOS 기본 `python3`와 `swiftc`(Xcode Command Line Tools)를 씁니다. 없으면 설치 창이 뜹니다.
+1. 이 페이지 위쪽의 초록색 **Code** 버튼 → **Download ZIP**으로 받아 압축을 풉니다.
+2. 풀린 폴더에서 **`집사 설치.command`** 를 더블클릭합니다.
+3. 처음에는 macOS가 *"열 수 없음"* 경고를 띄웁니다(개발자 인증서가 없는 무료 프로그램이라서). **완료**를 누른 뒤
+   **시스템 설정 → 개인정보 보호 및 보안** 맨 아래의 **그래도 열기**를 누르고, 다시 더블클릭해서 **열기**를 누르세요. 한 번만 하면 됩니다.
+
+### 설치하면서 / 설치한 뒤
+
+- **개발 도구 설치 창**이 뜰 수 있습니다(Xcode Command Line Tools — 집사가 쓰는 `python3`·`swiftc`·`git`이 들어 있음). 설치를 마친 뒤 방법 1의 한 줄을 다시 실행하거나 `집사 설치.command`를 다시 더블클릭하세요.
+- 설치 끝에 **"집사" 안내 창**이 뜨면 **설정 열기** → **카테고리별 → 파일 제공자 ⓘ → 집사**를 켜 주세요. 그래야 Finder 우클릭 메뉴가 나옵니다.
+- 처음 압축할 때 **알림 허용**과 **폴더 접근 권한**을 물어보면 허용하세요.
+- 터미널 명령어 `~/.local/bin/zipsa`, 앱 `~/Applications/집사.app`, Finder 우클릭 메뉴가 설치됩니다. 받아 온 폴더(`zipsa` 또는 `zipsa-main`)는 설치 후 지워도 됩니다(업데이트는 GitHub에서 직접 받아옵니다).
 
 ## 사용법
 

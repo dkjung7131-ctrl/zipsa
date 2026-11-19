@@ -8,7 +8,7 @@ echo
 if bash install.sh; then
   echo
   echo "🐾 설치가 끝났어요. 이 창은 닫아도 됩니다."
-  echo "   (받아 온 zipsa 폴더도 지워도 됩니다)"
+  echo "   (받아 온 이 폴더는 지워도 됩니다)"
 else
   echo
   echo "설치를 마치지 못했어요. 위 메시지를 확인해 주세요."
