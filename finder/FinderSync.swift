@@ -19,7 +19,14 @@ class FinderSync: FIFinderSync {
         guard menuKind == .contextualMenuForItems else { return nil }
         let menu = NSMenu(title: "")
         let item = NSMenuItem(title: "집사에게 압축 맡기기", action: #selector(compress(_:)), keyEquivalent: "")
-        item.image = NSImage(systemSymbolName: "archivebox", accessibilityDescription: nil)
+        // 집사 고양이 얼굴 (finder/menu_icon.png). 없으면 시스템 상자 아이콘
+        if let url = Bundle.main.url(forResource: "menu_icon", withExtension: "png"),
+           let icon = NSImage(contentsOf: url) {
+            icon.size = NSSize(width: 16, height: 16)
+            item.image = icon
+        } else {
+            item.image = NSImage(systemSymbolName: "archivebox", accessibilityDescription: nil)
+        }
         menu.addItem(item)
         return menu
     }

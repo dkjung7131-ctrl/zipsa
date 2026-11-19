@@ -65,6 +65,7 @@ if swiftc -O -module-name ZipsaFinder -parse-as-library -application-extension \
      finder/FinderSync.swift -o "$EXT/Contents/MacOS/ZipsaFinder" >/dev/null 2>&1; then
   /usr/bin/python3 -I finder/setup.py appex-plist "$EXT/Contents/Info.plist" "$EXT_ID" "$VERSION"
   /usr/bin/python3 -I finder/setup.py token "$EXT/Contents/Resources/token"
+  cat finder/menu_icon.png > "$EXT/Contents/Resources/menu_icon.png"
   FINDER_OK=1
 else
   rm -rf "$APP/Contents/PlugIns"

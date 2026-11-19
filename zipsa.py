@@ -27,7 +27,7 @@ import urllib.request
 import zipfile
 from collections import Counter
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 
 # 새 버전은 GitHub 릴리스(태그 vX.Y.Z)로 배포한다. main에 push만 한 변경은 사용자에게 가지 않는다.
 REPO_URL = "https://github.com/dkjung7131-ctrl/zipsa"
@@ -141,7 +141,15 @@ def decide_output(inputs, output):
             raise ZipsaError("출력 폴더가 없습니다: " + folder)
         return out
     first = inputs[0]
-    base = nfc(os.path.basename(first)) if len(inputs) == 1 else "Archive"
+    if len(inputs) > 1:
+        base = "Archive"
+    else:
+        base = nfc(os.path.basename(first))
+        # 파일 하나면 윈도우처럼 확장자를 뺀다 (사진.jpeg → 사진.zip).
+        # 폴더는 그대로 둔다 ('프로젝트 v1.2'의 '.2'는 확장자가 아니다)
+        if not os.path.isdir(first):
+            stem = os.path.splitext(base)[0]
+            base = stem or base
     return unique_path(os.path.join(os.path.dirname(first), base + ".zip"))
 
 
@@ -416,7 +424,7 @@ def main(argv=None):
         description="macOS 전용 파일을 빼고 한글 파일명을 NFC로 정규화해서 윈도우 호환 ZIP을 만듭니다.")
     ap.add_argument("paths", nargs="*", metavar="파일|폴더")
     ap.add_argument("-o", "--output", metavar="ZIP",
-                    help="출력 파일 (기본: 항목 1개면 '이름.zip', 여러 개면 'Archive.zip', 같은 이름이 있으면 '이름 2.zip')")
+                    help="출력 파일 (기본: 항목 1개면 '이름.zip'(파일은 확장자 뺌), 여러 개면 'Archive.zip', 같은 이름이 있으면 '이름 2.zip')")
     ap.add_argument("-l", "--level", type=int, default=6, choices=range(10), metavar="0-9",
                     help="압축 레벨 (기본 6, 0 = 무압축)")
     ap.add_argument("-q", "--quiet", action="store_true", help="결과 요약을 출력하지 않음")
